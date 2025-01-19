@@ -1,0 +1,29 @@
+{
+  "name": "react-node-app",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000m\u0000y\u0000-\u0000b\u0000i\u0000r\u0000t\u0000h\u0000d\u0000a\u0000y\u0000-\u0000a\u0000p\u0000p\u0000\r\u0000 \u0000",
+  "homepage": "https://github.com/mrGupta04/my-birthday-app#readme",
+  "bugs": {
+    "url": "https://github.com/mrGupta04/my-birthday-app/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrGupta04/my-birthday-app.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "git": "^0.1.5",
+    "nodemon": "^3.1.9",
+    "react-icons": "^5.4.0"
+  },
+  "devDependencies": {
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.15",
+    "react-refresh": "^0.16.0"
+  }
+}

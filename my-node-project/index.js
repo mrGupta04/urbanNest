@@ -224,47 +224,44 @@ app.post('/api/adminsignup', async (req, res) => {
 });
 
 
-app.put('/api/admin/update', async (req, res) => {
-    const { admin_id, fullname, mobile_no, email, city, profile_pic } = req.body;
+app.put('/api/admin/update', upload.single('profile_pic'), async (req, res) => {
+    const { fullname, mobile_no, email, city, admin_id } = req.body;
 
-    // Check if admin_id is provided
     if (!admin_id) {
         return res.status(400).json({ message: 'admin_id is required' });
     }
 
+    let profile_pic = null;
+    if (req.file) {
+        const fileExtension = path.extname(req.file.originalname);
+        const newFileName = `${Date.now()}-${req.file.filename}${fileExtension}`;
+        const newFilePath = path.join(__dirname, 'uploads', newFileName);
+
+        fs.renameSync(req.file.path, newFilePath);
+        profile_pic = `/uploads/${newFileName}`; // Relative path for storage
+    }
+
     try {
-        // Update query to handle updating all fields, including profile_pic
         const query = `
             UPDATE admins
-            SET
-                fullname = $1,
-                mobile_no = $2,
-                email = $3,
-                city = $4,
-                profile_pic = $5
+            SET fullname = $1, mobile_no = $2, email = $3, city=$4 profile_pic = COALESCE($5, profile_pic)
             WHERE admin_id = $6
             RETURNING *;
         `;
 
         const values = [fullname, mobile_no, email, city, profile_pic, admin_id];
-
-        // Execute the query and get the result
         const result = await pool.query(query, values);
 
-        // Check if the admin was found and updated
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Admin not found' });
         }
 
-        // Respond with the updated admin data
         res.json(result.rows[0]);
     } catch (err) {
-        // Log and return a server error
         console.error('Error updating admin:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
-
 
 app.post('/api/adminlogin', async (req, res) => {
     const { admin_id, password } = req.body;
@@ -349,7 +346,6 @@ app.delete('/api/rooms-delete/:id', async (req, res) => {
     const roomId = parseInt(req.params.id);
 
     try {
-        // Check if room exists
         const roomCheck = await pool.query('SELECT * FROM rooms WHERE id = $1', [roomId]);
         if (roomCheck.rows.length === 0) {
             return res.status(404).json({ error: 'Room not found' });
@@ -368,54 +364,38 @@ app.delete('/api/rooms-delete/:id', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
+// Update room details including image
 app.put('/api/rooms-update/:id', upload.single('img'), async (req, res) => {
-    const room_id = req.params.id;
     const { rent, secu_deposit, city, district, room_type, bed_type } = req.body;
-    const img = req.file ? req.file.path : null;
+    const roomId = req.params.id;
+    let imageUrl = null;
+
+    if (req.file) {
+        // If there is a new image, move the file to a permanent location
+        const newImagePath = path.join(__dirname, 'uploads', req.file.filename + path.extname(req.file.originalname));
+        fs.renameSync(req.file.path, newImagePath);
+        imageUrl = `/uploads/${req.file.filename + path.extname(req.file.originalname)}`;
+    }
 
     try {
-        // Initialize the update fields array and the values array
-        const updateFields = [
-            `rent = $1`,
-            `secu_deposit = $2`,
-            `city = $3`,
-            `district = $4`,
-            `room_type = $5`,
-            `bed_type = $6`
+        const query = `
+            UPDATE rooms
+            SET rent = $1, secu_deposit = $2, city = $3, district = $4, room_type = $5, bed_type = $6, room_pic = $7
+            WHERE id = $8 RETURNING *;
+        `;
+        const values = [
+            rent, secu_deposit, city, district, room_type, bed_type, imageUrl, roomId
         ];
-        const values = [rent, secu_deposit, city, district, room_type, bed_type];
 
-        // Conditionally add the room_pic field to the update query if an image is provided
-        if (img) {
-            updateFields.push('room_pic = $7');
-            values.push(img);
-        }
-
-        // Build the final query string dynamically based on whether the image is included
-        const query = `UPDATE rooms SET ${updateFields.join(', ')} WHERE id = $${values.length + 1} RETURNING *`;
-        values.push(room_id);  // Add room_id as the last value for the WHERE clause
-
-        // Log query and values for debugging (can remove this in production)
-        console.log('Query:', query);
-        console.log('Values:', values);
-
-        // Execute the query
         const result = await pool.query(query, values);
-
-        // Check if any rows were updated
-        if (result.rowCount === 0) {
-            return res.status(404).json({ message: 'Room not found' });
-        }
-
-        // Return the updated room information as JSON
-        res.status(200).json(result.rows[0]);
+        res.json(result.rows[0]);
     } catch (error) {
-        // Handle any errors that occur during the update process
-        console.error('Error updating room:', error.message);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error updating room:', error);
+        res.status(500).json({ message: 'Error updating room' });
     }
 });
+
+// Starting the server
 
 
 app.get('/availroom', async (req, res) => {
